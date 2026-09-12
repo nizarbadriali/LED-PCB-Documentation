@@ -15,7 +15,7 @@ dataFiles = dir('workdir/*.dat');
 
 if isempty(dataFiles)
     fprintf('\033[91m✗ No data files found in workdir/ folder\033[0m\n');
-    return
+    return;
 end
 
 fprintf('\033[92m✓ Found %d data file(s)\033[0m\n\n', length(dataFiles));
@@ -36,6 +36,10 @@ for fileIdx = 1:length(dataFiles)
         
         current = data(:, 1);  % Column 1: current (Amps)
         voltage = data(:, 2);  % Column 2: voltage (Volts)
+        
+        % Ensure column vectors
+        current = current(:);
+        voltage = voltage(:);
         
         fprintf('  Data points: %d\n', length(current));
         fprintf('  Current range: %.3e to %.3e A\n', min(current), max(current));
@@ -65,37 +69,27 @@ end
 
 fprintf('Done!\n\n');
 
-%% ========== STAGE 1: High-Current Linear Fit ==========
+
+%% ========== LOCAL FUNCTIONS (MUST BE AT VERY BOTTOM) ==========
+
 function [Rs_est, Vd_est] = fitHighCurrent(current, voltage, numPoints)
-    % For high currents, voltage ≈ I*Rs (dominates over exponential)
-    % Linear fit: V = Rs*I + Vd
-    
     N = min(floor(length(current)/2), floor(numPoints));
-    
-    % Use last N points (highest currents)
     startIdx = length(current) - N + 1;
     p = polyfit(current(startIdx:end), voltage(startIdx:end), 1);
-    Rs_est = p(1);
-    Vd_est = p(2);
+    Rs_est = max(p(1), 1e-3); % Ensure non-negative series resistance
+    Vd_est = max(p(2), 0.1);  % Ensure positive diode knee voltage
 end
 
-%% ========== STAGE 2: Low-Current Exponential Fit ==========
 function [b_opt, c_opt] = fitLowCurrent(current, voltage, Rs, Vd, Vt)
-    % Fit: V = b * Vt * log(exp(c) * I + 1)
-    % where b ≈ n and c is related to Is
-    
     M = floor(length(current) / 2);
     
-    b_scale = 1.5 * Vt;  % Initial guess for n
-    c_scale = log((exp(Vd / (1.5 * Vt)) - 1) / current(1) + 1e-10);
+    b_scale = 1.5 * Vt;
+    c_scale = max((exp(Vd / (1.5 * Vt)) - 1) / max(current(1), 1e-12), 1e-3);
     
-    % Define objective function for fitting
-    objective = @(params) sum((voltage(1:M) - (params(1) * b_scale * log(params(2) * c_scale * current(1:M) + 1))).^2);
+    % Objective function
+    objective = @(params) sum((voltage(1:M) - (params(1) * b_scale * log(abs(params(2)) * c_scale * current(1:M) + 1))).^2);
     
-    % Initial guess
     x0 = [1, 1];
-    
-    % Use fminsearch for optimization
     options = optimset('Display', 'off', 'TolFun', 1e-6);
     params = fminsearch(objective, x0, options);
     
@@ -103,37 +97,30 @@ function [b_opt, c_opt] = fitLowCurrent(current, voltage, Rs, Vd, Vt)
     c_opt = params(2);
 end
 
-%% ========== STAGE 3: Full Model Optimization ==========
 function [Is, n, Rs, err] = fitDiodeModel(current, voltage, Vt)
-    % Three-stage fitting algorithm
-    
     % Stage 1: High-current linear fit
-    [Rs, Vd] = fitHighCurrent(current, voltage, 1e6);
+    [Rs_init, Vd] = fitHighCurrent(current, voltage, 1e6);
     
     % Stage 2: Low-current exponential fit
-    [b_opt, c_opt] = fitLowCurrent(current, voltage, Rs, Vd, Vt);
+    [b_opt, c_opt] = fitLowCurrent(current, voltage, Rs_init, Vd, Vt);
     
     % Stage 3: Full model optimization
-    b_scale = b_opt * (1.5 * Vt);
-    c_scale = exp(c_opt * log((exp(Vd / (1.5 * Vt)) - 1) / current(1) + 1e-10));
-    a_scale = Rs;
+    b_scale = max(b_opt * (1.5 * Vt), 1e-3);
+    c_scale = max(c_opt * (exp(Vd / (1.5 * Vt)) - 1) / max(current(1), 1e-12), 1e-3);
+    a_scale = Rs_init;
     
-    % Full diode equation: V = b*Vt*ln(c*I + 1) + a*Rs*I
-    objective = @(p) sum((voltage - (p(1) * b_scale * log(p(2) * c_scale * current + 1) + p(3) * a_scale * current)).^2);
+    objective = @(p) sum((voltage - (p(1) * b_scale * log(abs(p(2)) * c_scale * current + 1) + p(3) * a_scale * current)).^2);
     
-    % Initial guess
     x0 = [1, 1, 1];
-    
-    % Optimize using fminsearch
-    options = optimset('Display', 'off', 'TolFun', 1e-8, 'MaxIter', 1000);
+    options = optimset('Display', 'off', 'TolFun', 1e-8, 'MaxIter', 2000);
     p_opt = fminsearch(objective, x0, options);
     
     % Extract final parameters
-    Rs = p_opt(3) * a_scale;
-    n = p_opt(1) * b_scale / Vt;
-    Is = 1 / (p_opt(2) * c_scale + 1e-10);
+    Rs = max(p_opt(3) * a_scale, 1e-4);
+    n = max(p_opt(1) * b_scale / Vt, 0.5);
+    Is = max(1 / (abs(p_opt(2)) * c_scale + 1e-15), 1e-18);
     
-    % Calculate error
-    V_model = p_opt(1) * b_scale * log(p_opt(2) * c_scale * current + 1) + p_opt(3) * a_scale * current;
-    err = sqrt(sum((voltage - V_model).^2));
+    % Calculate RMS error
+    V_model = p_opt(1) * b_scale * log(abs(p_opt(2)) * c_scale * current + 1) + p_opt(3) * a_scale * current;
+    err = sqrt(mean((voltage - V_model).^2));
 end
