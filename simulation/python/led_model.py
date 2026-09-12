@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""
-LED SPICE Model Fitter
-
-This script creates SPICE diode models from measured LED I-V data.
-Based on Ted Yapo's LED modeling work:
-    https://hackaday.io/project/12874
-    https://github.com/tedyapo/led-modeling
-
-The algorithm uses three-stage fitting:
-    1. High-current linear fit -> estimate Rs and Vd
-    2. Low-current non-linear fit -> estimate Is and n
-    3. Full model non-linear fit -> optimize all three parameters
-
-This produces accurate SPICE models for DC/low-frequency simulation.
-"""
 
 import glob
 import sys
