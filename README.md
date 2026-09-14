@@ -27,13 +27,14 @@ python3 simulation/python/led_model.py
 1. Open `simulation/ltspice/led_circuit.asc` in LTspice
 2. The SPICE `.MODEL` directive is embedded in the schematic file
 3. Simulate to verify results
-4. **Predicted (from model):** LED current ~14.3 mA, voltage drop ~1.84V
+4. **Predicted (from model):** LED current ~14.35 mA, voltage drop ~1.84V
 
 ### 3. Design PCB in KiCad
 
-1. Open `kicad/Simple LED.kicad_sch` (schematic)
-2. Open `kicad/Simple LED.kicad_pcb` (PCB layout completed)
-3. Export Gerber files from `kicad/gerbers.zip` for manufacturing
+1. Open the project: `kicad/Simple LED.kicad_pro`
+2. View schematic: `kicad/Simple LED.kicad_sch`
+3. View PCB layout: `kicad/Simple LED.kicad_pcb`
+4. Use the manufacturing files supplied in `kicad/gerbers.zip` (includes Gerbers and drills)
 
 ## Circuit Design
 
@@ -65,9 +66,9 @@ R_theoretical = 3.0V / 15mA = 200Ω
 
 **Model predictions (from custom SPICE model):**
 ```
-LED voltage drop: 1.84V (led_red model prediction)
-LED current: 14.35 mA (model prediction)
-Resistor dissipation: 45.3 mW (calculated from model)
+LED voltage drop: 1.84267V (led_red model prediction)
+LED current: 14.3515 mA (model prediction)
+Resistor dissipation: 45.31 mW (calculated from model)
 ```
 
 ## Project Structure
@@ -84,14 +85,15 @@ LED-PCB-DOCUMENTATION/
 │       └── led_circuit.log
 ├── models/
 │   ├── red_led.lib
-│   ├── blue_led.lib
-│   └── workdir/                  → Measured LED I-V data
-│       ├── led_red.dat
-│       └── led_blue.dat
+│   └── blue_led.lib
+├── workdir/                      → Measured LED I-V data (at repository root)
+│   ├── led_red.dat
+│   └── led_blue.dat
 ├── kicad/
+│   ├── Simple LED.kicad_pro      → Open this to load the project
 │   ├── Simple LED.kicad_sch      → Schematic (R2, D1, J1)
 │   ├── Simple LED.kicad_pcb      → PCB layout (completed)
-│   └── gerbers.zip               → Gerber files for manufacturing
+│   └── gerbers.zip               → Gerber and drill files for manufacturing
 ├── README.md
 └── LICENSE
 ```
@@ -122,15 +124,15 @@ SPICE model (embedded in LTspice .asc file)
         ↓
 Simulate circuit
         ↓
-Generate predicted voltage drops & current
+Generate predicted voltage and current
         ↓
 Compare with theoretical estimates
 ```
 
 **Model predictions:**
 ```
-V(LED) = 1.84V      (from led_red model)
-I(LED) = 14.35mA    (from led_red model)
+LED voltage drop: 1.84267V (from led_red model)
+Circuit current: 14.3515 mA (from led_red model)
 ```
 
 ### Step 3: Verified Design → PCB Layout
@@ -146,11 +148,11 @@ Ground plane on bottom layer
         ↓
 Design rule check: PASS
         ↓
-Generate Gerber files for manufacturing
+Generate Gerber and drill files for manufacturing
 ```
 
 **PCB Specifications:**
-- Trace width: 0.4 mm (~15.75 mil) - safe for predicted 14mA
+- Trace width: 0.4 mm (~15.75 mil) — safe for predicted 14.35mA
 - Vias: 0 (design uses plated through-hole pads)
 - Plated through-hole pads: 6 (component connections)
 - Ground plane: Yes (bottom layer)
@@ -163,11 +165,12 @@ LTspice's built-in 1N4148 diode model is for signal diodes (~0.7V drop), not LED
 
 **Comparison (at 5V supply, 220Ω resistor):**
 ```
-1N4148 model (0.7V drop):  → ~19.4 mA through circuit
-led_red model (1.84V drop): → ~14.35 mA through circuit
+1N4148 at 0.7V:  → 19.55 mA through circuit
+1N4148 at 0.73V: → 19.41 mA through circuit
+led_red model:   → 14.3515 mA through circuit
 ```
 
-The 1N4148 comparison assumes a 0.7V forward voltage, which would result in ~19.4 mA, not the 21.3 mA stated in earlier versions. Custom LED models provide realistic behavior.
+The 1N4148 predictions result in much higher currents. Custom LED models provide realistic behavior.
 
 ### Why 220Ω?
 
@@ -180,12 +183,12 @@ The 1N4148 comparison assumes a 0.7V forward voltage, which would result in ~19.
 **Python (`led_model.py`):**
 - Uses scipy's Levenberg-Marquardt curve_fit
 - Produced model output: `Is=1.768568e-04, n=8.539763e+00, Rs=6.054497e+01`
-- Fit error: 0.133 (reasonable)
+- Fit error (RMSE): ~0.0595 V (√sum of squared voltage residuals, in volts)
 
 **MATLAB (`led_model.m`):**
 - Uses fminsearch (Nelder-Mead algorithm)
-- Produced model output: `Is=0, n=8.54, Rs=60` (unphysical Is value)
-- Fit error: Inf (failed)
+- With the current implementation, produces `Is` clamped at 1e-18, `n=12`, `Rs=40`
+- Earlier testing showed unphysical results
 - Status: Educational reference only; do not use for design
 
 ## Installation & Usage
@@ -226,10 +229,15 @@ The circuit schematic contains:
 
 **Requirements:** KiCad 9.0+
 
+**To open the project:**
+1. Open `kicad/Simple LED.kicad_pro`
+2. This loads both the schematic and PCB layout
+
 **Files:**
+- Project: `kicad/Simple LED.kicad_pro`
 - Schematic: `kicad/Simple LED.kicad_sch`
 - PCB Layout: `kicad/Simple LED.kicad_pcb`
-- Manufacturing: `kicad/gerbers.zip` + drill files
+- Manufacturing: `kicad/gerbers.zip` (includes Gerber and drill files)
 
 The PCB layout is complete with:
 - All components placed and routed
@@ -241,9 +249,9 @@ The PCB layout is complete with:
 
 **Important:** Results shown below are model predictions based on measured I-V data. They represent the mathematical model's estimate of LED behavior, not verified specifications.
 
-**Model predictions at 14.35 mA:**
-- LED voltage drop: 1.84V
-- Resistor dissipation: 45.3 mW
+**Model predictions at 14.3515 mA:**
+- LED voltage drop: 1.84267V
+- Resistor dissipation: 45.31 mW
 
 **To verify in actual circuit:**
 - Build the PCB with the actual selected LED
@@ -261,35 +269,37 @@ Do not rely solely on model predictions without datasheet verification.
 ## Simulation Results
 
 **LTspice Operating Point (predicted by led_red model):**
-```
-V(rail_5V)  = 5.00V       Power supply
-V(between_R_and_LED) = 3.16V  Voltage at resistor output
-V(LED_cathode)  = 0.00V        GND reference
-V(LED) drop = 1.84V            (calculated from node voltages)
-I(R1) = 14.35 mA               Current through circuit
-P(R220Ω) = 45.3 mW             Resistor dissipation
-```
+
+| Quantity | Value | Notes |
+|----------|-------|-------|
+| Supply voltage | 5.00000 V | Input |
+| LED anode voltage (vs. ground) | 1.84267 V | Voltage at LED positive terminal |
+| LED cathode voltage (vs. ground) | 0 V | Connected to GND reference |
+| **Voltage across resistor** | 3.15733 V | 5V − 1.84267V |
+| Circuit current magnitude | 14.3515 mA | Same through all series elements |
+| Resistor dissipation | 45.31 mW | I²R = (0.0143515)² × 220 |
 
 ## Tools & Versions
 
-- **KiCad 9.0** - Schematic & PCB design
-- **LTspice 17.2.4** - Circuit simulation (uses embedded `.MODEL` in .asc file)
-- **Python 3.7+** - SPICE model fitting script
-- **scipy 1.17.1 / numpy 2.4.4** - Numerical computation
+- **KiCad 9.0** — Schematic & PCB design
+- **LTspice 17.2.4** — Circuit simulation (uses embedded `.MODEL` in .asc file)
+- **Python 3.7+** — SPICE model fitting script
+- **scipy 1.17.1 / numpy 2.4.4** — Numerical computation
 
 ## Verification Checklist
 
 - [x] Custom SPICE models generated from measured data
 - [x] Circuit simulated in LTspice using embedded model
-- [x] Model predictions: LED 14.35 mA, 1.84V drop (qualification: model-based, not measured)
+- [x] Model predictions: LED 14.3515 mA, 1.84267V drop (qualification: model-based, not measured)
 - [x] Resistor value uses manufactured standard (220Ω E12)
+- [x] KiCad project file created and working
 - [x] KiCad schematic complete (R2, D1, J1)
 - [x] KiCad PCB layout complete
 - [x] Traces properly sized (0.4 mm for model prediction)
 - [x] Ground plane implemented (bottom layer)
 - [x] No vias required (uses plated through-hole pads)
 - [x] Design rules passed
-- [x] Gerber files generated for manufacturing
+- [x] Gerber and drill files generated for manufacturing
 
 ## Known Limitations & Assumptions
 
@@ -302,7 +312,7 @@ P(R220Ω) = 45.3 mW             Resistor dissipation
 
 ### MATLAB Implementation
 
-The MATLAB version uses Nelder-Mead algorithm (fminsearch), which produced unphysical results (`Is=0`) with the test data. Python's Levenberg-Marquardt implementation produced physically reasonable results. Do not use MATLAB version for design work.
+The MATLAB version uses Nelder-Mead algorithm (fminsearch). Earlier testing produced unphysical results. The current implementation clamps parameters but does not produce reliable fits. Do not use for design work.
 
 ### LED Specifications
 
@@ -329,7 +339,7 @@ Based on Ted Yapo's LED modeling project:
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License — See LICENSE file for details.
 
 ---
 
