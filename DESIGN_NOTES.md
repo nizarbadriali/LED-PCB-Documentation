@@ -69,7 +69,7 @@ The handwritten copper-loss estimate illustrates a 35 mm section using assumed 0
 | Check | Recorded outcome | Evidence |
 |-------|------------------|----------|
 | ERC | Zero reported errors/warnings | [ERC screenshot](kicad/erc.png) |
-| DRC | Zero reported violations and unconnected items | [Final DRC/parity screenshot](kicad/drc.png) |
+| DRC | Zero reported violations and unconnected items | [Final DRC/parity screenshot](kicad/drc_parity.png) |
 | Schematic-to-PCB parity | Zero differences; test enabled | Same final DRC/parity screenshot |
 | LTspice operating point | Converged; 14.3515 mA circuit current | [Simulation log](simulation/ltspice/led_circuit.log) |
 
