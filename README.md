@@ -2,9 +2,11 @@
 
 **Status:** Schematic and PCB designed; LTspice simulation completed; uploaded ERC, DRC, and schematic-parity results show zero reported violations under the configured checks. Manufacturing files exported. Physical assembly and testing pending.
 
-![LED circuit schematic](kicad/Screenshot%202026-09-13%20at%207.06.14%20PM.png)
+![LED circuit schematic](kicad/schematic.png)
 
-![PCB 3D render](kicad/Screenshot%202026-09-13%20at%207.03.12%20PM.png)
+![PCB layout](kicad/layout.png)
+
+![PCB 3D render](kicad/3d_viewer.png)
 
 ## What This Is
 

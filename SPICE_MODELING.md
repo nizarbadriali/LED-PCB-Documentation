@@ -14,7 +14,7 @@ The red dataset in [workdir/led_red.dat](workdir/led_red.dat) contains:
 | 15 | 2.0 |
 | 20 | 2.2 |
 
-File currents are expressed in apperes. The 0.5 V at 1 mA point is unusual for a conventional visible red LED and should be verified before using the data to represent a selected component. A blue dataset is also supplied in [workdir/led_blue.dat](workdir/led_blue.dat).
+File currents are expressed in amperes. The 0.5 V at 1 mA point is unusual for a conventional visible red LED and should be verified before using the data to represent a selected component. A blue dataset is also supplied in [workdir/led_blue.dat](workdir/led_blue.dat).
 
 ## Model Equation
 
